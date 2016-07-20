@@ -53,6 +53,7 @@ impl<'a> InputLength for (&'a [u8], usize) {
 }
 
 use std::iter::Enumerate;
+#[cfg(not(feature = "core"))]
 use std::str::CharIndices;
 
 pub trait AsChar {
@@ -66,6 +67,8 @@ pub trait AsChar {
     fn is_0_to_9(self)   -> bool;
     #[inline]
     fn is_hex_digit(self) -> bool;
+    #[inline]
+    fn is_oct_digit(self) -> bool;
 }
 
 impl<'a> AsChar for &'a u8 {
@@ -87,6 +90,10 @@ impl<'a> AsChar for &'a u8 {
       (*self >= 0x41 && *self <= 0x46) ||
       (*self >= 0x61 && *self <= 0x66)
     }
+    #[inline]
+    fn is_oct_digit(self)   -> bool {
+      *self >= 0x30 && *self <= 0x37
+    }
 }
 
 impl AsChar for char {
@@ -100,6 +107,8 @@ impl AsChar for char {
     fn is_0_to_9(self)   -> bool { self.is_digit(10) }
     #[inline]
     fn is_hex_digit(self) -> bool { self.is_digit(16) }
+    #[inline]
+    fn is_oct_digit(self) -> bool { self.is_digit(8) }
 }
 
 pub trait IterIndices {
@@ -117,6 +126,7 @@ impl<'a> IterIndices for &'a [u8] {
     }
 }
 
+#[cfg(not(feature = "core"))]
 impl<'a> IterIndices for &'a str {
     type Item = char;
     type Iter = CharIndices<'a>;
@@ -289,6 +299,8 @@ pub fn compare_error_paths<P,E:Clone+PartialEq>(e1:&Err<P,E>, e2:&Err<P,E>) -> b
   error_to_list(e1) == error_to_list(e2)
 }
 
+
+#[cfg(not(feature = "core"))]
 use std::hash::Hash;
 
 #[cfg(not(feature = "core"))]
@@ -585,6 +597,7 @@ pub enum ErrorKind<E=u32> {
   IsA,
   SeparatedList,
   SeparatedNonEmptyList,
+  Many0,
   Many1,
   Count,
   TakeUntilAndConsume,
@@ -596,6 +609,7 @@ pub enum ErrorKind<E=u32> {
   Alpha,
   Digit,
   HexDigit,
+  OctDigit,
   AlphaNumeric,
   Space,
   MultiSpace,
@@ -628,6 +642,7 @@ pub enum ErrorKind<E=u32> {
   ManyMN,
   TakeUntilAndConsumeStr,
   TakeUntilStr,
+  Not
 }
 
 pub fn error_to_u32<E>(e: &ErrorKind<E>) -> u32 {
@@ -684,5 +699,71 @@ pub fn error_to_u32<E>(e: &ErrorKind<E>) -> u32 {
     ErrorKind::TakeUntilAndConsumeStr    => 58,
     ErrorKind::HexDigit                  => 59,
     ErrorKind::TakeUntilStr              => 60,
+    ErrorKind::OctDigit                  => 61,
+    ErrorKind::Many0                     => 62,
+    ErrorKind::Not                       => 63,
   }
 }
+
+  impl<E> ErrorKind<E> {
+    pub fn description(&self) -> &str {
+      match *self {
+        ErrorKind::Custom(_)                 => "Custom error",
+        ErrorKind::Tag                       => "Tag",
+        ErrorKind::MapRes                    => "Map on Result",
+        ErrorKind::MapOpt                    => "Map on Option",
+        ErrorKind::Alt                       => "Alternative",
+        ErrorKind::IsNot                     => "IsNot",
+        ErrorKind::IsA                       => "IsA",
+        ErrorKind::SeparatedList             => "Separated list",
+        ErrorKind::SeparatedNonEmptyList     => "Separated non empty list",
+        ErrorKind::Many0                     => "Many0",
+        ErrorKind::Many1                     => "Many1",
+        ErrorKind::Count                     => "Count",
+        ErrorKind::TakeUntilAndConsume       => "Take until and consume",
+        ErrorKind::TakeUntil                 => "Take until",
+        ErrorKind::TakeUntilEitherAndConsume => "Take until either and consume",
+        ErrorKind::TakeUntilEither           => "Take until either",
+        ErrorKind::LengthValue               => "Length followed by value",
+        ErrorKind::TagClosure                => "Tag closure",
+        ErrorKind::Alpha                     => "Alphabetic",
+        ErrorKind::Digit                     => "Digit",
+        ErrorKind::AlphaNumeric              => "AlphaNumeric",
+        ErrorKind::Space                     => "Space",
+        ErrorKind::MultiSpace                => "Multiple spaces",
+        ErrorKind::LengthValueFn             => "LengthValueFn",
+        ErrorKind::Eof                       => "End of file",
+        ErrorKind::ExprOpt                   => "Evaluate Option",
+        ErrorKind::ExprRes                   => "Evaluate Result",
+        ErrorKind::CondReduce                => "Condition reduce",
+        ErrorKind::Switch                    => "Switch",
+        ErrorKind::TagBits                   => "Tag on bitstream",
+        ErrorKind::OneOf                     => "OneOf",
+        ErrorKind::NoneOf                    => "NoneOf",
+        ErrorKind::Char                      => "Char",
+        ErrorKind::CrLf                      => "CrLf",
+        ErrorKind::RegexpMatch               => "RegexpMatch",
+        ErrorKind::RegexpMatches             => "RegexpMatches",
+        ErrorKind::RegexpFind                => "RegexpFind",
+        ErrorKind::RegexpCapture             => "RegexpCapture",
+        ErrorKind::RegexpCaptures            => "RegexpCaptures",
+        ErrorKind::TakeWhile1                => "TakeWhile1",
+        ErrorKind::Complete                  => "Complete",
+        ErrorKind::Fix                       => "Fix",
+        ErrorKind::Escaped                   => "Escaped",
+        ErrorKind::EscapedTransform          => "EscapedTransform",
+        ErrorKind::TagStr                    => "Tag on strings",
+        ErrorKind::IsNotStr                  => "IsNot on strings",
+        ErrorKind::IsAStr                    => "IsA on strings",
+        ErrorKind::TakeWhile1Str             => "TakeWhile1 on strings",
+        ErrorKind::NonEmpty                  => "NonEmpty",
+        ErrorKind::ManyMN                    => "Many(m, n)",
+        ErrorKind::TakeUntilAndConsumeStr    => "Take until and consume on strings",
+        ErrorKind::HexDigit                  => "Hexadecimal Digit",
+        ErrorKind::TakeUntilStr              => "Take until on strings",
+        ErrorKind::OctDigit                  => "Octal digit",
+        ErrorKind::Not                       => "Negation",
+      }
+
+    }
+  }

@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate nom;
 
-use nom::{IResult,Needed,HexDisplay,space,digit};
+use nom::{IResult,Needed,HexDisplay,space,digit,be_u16};
 use std::str;
 
 #[allow(dead_code)]
@@ -97,6 +97,11 @@ fn issue_142(){
    assert_eq!(subject, expected)
 }
 
+#[test]
+fn usize_length_bytes_issue(){
+  length_bytes!(b"012346", be_u16);
+}
+
 /*
  DOES NOT COMPILE
 #[test]
@@ -114,3 +119,13 @@ fn issue_152() {
   );
 }
 */
+
+#[test]
+fn take_till_issue() {
+    named!(nothing,
+        take_till!(call!(|_| true))
+    );
+
+    assert_eq!(nothing(b""), IResult::Done(&b""[..], &b""[..]));
+    assert_eq!(nothing(b"abc"), IResult::Done(&b"abc"[..], &b""[..]));
+}

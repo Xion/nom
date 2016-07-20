@@ -152,10 +152,10 @@ macro_rules! is_a_s (
 );
 
 
-/// `take_while!(char -> bool) => &str -> IResult<&str, &str>`
-/// returns the longest list of bytes until the provided function fails.
+/// `take_while_s!(char -> bool) => &str -> IResult<&str, &str>`
+/// returns the longest list of characters until the provided function fails.
 ///
-/// The argument is either a function `T -> bool` or a macro returning a `bool
+/// The argument is either a function `char -> bool` or a macro returning a `bool
 ///
 /// ```
 /// # #[macro_use] extern crate nom;
@@ -192,10 +192,10 @@ macro_rules! take_while_s (
   );
 );
 
-/// `take_while1!(T -> bool) => &[T] -> IResult<&[T], &[T]>`
-/// returns the longest (non empty) list of bytes until the provided function fails.
+/// `take_while1_s!(char -> bool) => &str -> IResult<&str, &str>`
+/// returns the longest (non empty) list of characters until the provided function fails.
 ///
-/// The argument is either a function `T -> bool` or a macro returning a `bool`
+/// The argument is either a function `char -> bool` or a macro returning a `bool`
 /// ```
 /// # #[macro_use] extern crate nom;
 /// # use nom::IResult::Done;
@@ -234,10 +234,10 @@ macro_rules! take_while1_s (
 );
 
 
-/// `take_till_s!(T -> bool) => &[T] -> IResult<&[T], &[T]>`
-/// returns the longest list of bytes until the provided function succeeds
+/// `take_till_s!(&str -> bool) => &str -> IResult<&str, &str>`
+/// returns the longest list of characters until the provided function succeeds
 ///
-/// The argument is either a function `T -> bool` or a macro returning a `bool
+/// The argument is either a function `char -> bool` or a macro returning a `bool
 #[macro_export]
 macro_rules! take_till_s (
   ($input:expr, $submac:ident!( $($args:tt)* )) => (
@@ -332,7 +332,12 @@ macro_rules! take_until_s (
         for (o, c) in $input.char_indices() {
             if shift_window_and_cmp(& mut window, c, &substr_vec) {
                 parsed = true;
-                offset = o - window[1].len_utf8() - window[2].len_utf8()
+                window.pop();
+                let window_len: usize = window.iter()
+                    .map(|x| x.len_utf8())
+                    .fold(0, |x, y| x + y);
+                offset = o - window_len;
+                break;
             }
         }
         if parsed {
@@ -417,10 +422,10 @@ mod test {
 
     #[test]
     fn take_until_s_succeed() {
-        const INPUT: &'static str = "βèƒôřèÂßÇáƒƭèř";
-        const FIND: &'static str = "ÂßÇ";
+        const INPUT: &'static str = "βèƒôřèÂßÇ∂áƒƭèř";
+        const FIND: &'static str = "ÂßÇ∂";
         const CONSUMED: &'static str = "βèƒôřè";
-        const LEFTOVER: &'static str = "ÂßÇáƒƭèř";
+        const LEFTOVER: &'static str = "ÂßÇ∂áƒƭèř";
 
         match take_until_s!(INPUT, FIND) {
             IResult::Done(extra, output) => {
